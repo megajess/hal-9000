@@ -75,6 +75,42 @@ Response: 0 or 1
 - Boot count persisted in flash across reboots
 - Visible in web UI as device health log
 
+## Build Order
+Development follows a phased approach to ensure each component has
+something real to integrate with as early as possible:
+
+### Phase 1 - Server Foundation
+- Basic HTTP server
+- In memory store
+- Poll endpoint
+- Device registration endpoint
+
+### Phase 2 - Firmware Core
+- WiFi connection
+- Poll loop talking to server
+- Relay control
+- Physical switch input
+
+At the end of Phase 2 a basic working light switch exists.
+
+### Phase 3 - Server Auth
+- User accounts
+- JWT authentication
+- Device association
+
+### Phase 4 - iOS
+- Login
+- Device list and toggle control
+- Pairing flow
+
+### Phase 5 - Polish
+- Diagnostics
+- Web UI
+- HomeKit integration
+
+### Current Phase
+Phase 1 — Server Foundation
+
 ## Developer Background
 The developer is a senior iOS engineer (12+ years) with strong Swift/
 SwiftUI expertise. Go is familiar but slightly rusty. C++/embedded 
