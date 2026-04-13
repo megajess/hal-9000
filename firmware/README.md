@@ -1,0 +1,1 @@
+# Wemos D1 Mini decive firmware for Home Automation Lightswitch-9000

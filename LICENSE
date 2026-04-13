@@ -1,6 +1,35 @@
-MIT License
+MIT License with Electrical Safety Disclaimer
 
 Copyright (c) 2026 Jesse Suter
+
+ELECTRICAL SAFETY DISCLAIMER
+=============================
+This project involves working with mains voltage (120V AC or higher) which 
+can cause serious injury or death if handled improperly. By using, building, 
+or modifying this project you acknowledge that:
+
+- Working with mains voltage is inherently dangerous
+- This project is provided for educational and personal use only
+- The author(s) are not responsible for any injury, death, property damage,
+  or other harm resulting from the use or misuse of this project
+- This design has not been tested or certified by any safety organization
+  (UL, ETL, CE, etc.)
+- You should consult a licensed electrician before attempting any mains
+  voltage wiring
+- Local electrical codes and regulations must be followed
+- This project should never be left unattended during initial testing
+- Children should never have access to any mains voltage components
+
+If you are not comfortable working with mains voltage DO NOT attempt 
+to build this project.
+
+THE SOFTWARE AND HARDWARE DESIGNS ARE PROVIDED "AS IS", WITHOUT WARRANTY 
+OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES 
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE 
+USE OR OTHER DEALINGS IN THE SOFTWARE OR HARDWARE DESIGNS.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -9,13 +38,6 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The above copyright notice, this permission notice, and the electrical safety
+disclaimer shall be included in all copies or substantial portions of the
+Software.

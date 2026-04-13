@@ -1,0 +1,1 @@
+# Wiring diagrams and insructions for Home Automation Lightswitch-9000
