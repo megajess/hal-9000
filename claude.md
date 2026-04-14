@@ -109,7 +109,7 @@ At the end of Phase 2 a basic working light switch exists.
 - HomeKit integration
 
 ### Current Phase
-Phase 1 — Server Foundation
+Phase 2 - Firmware Core
 
 ## Developer Background
 The developer is a senior iOS engineer (12+ years) with strong Swift/
