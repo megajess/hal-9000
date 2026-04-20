@@ -23,10 +23,8 @@ platform = espressif8266
 board = d1_mini
 framework = arduino
 monitor_speed = 115200
-upload_speed = 921600
+upload_speed = 460800
 monitor_filters = esp8266_exception_decoder
-lib_deps =
-    tzapu/WiFiManager
 
 [env:d1_mini_debug]
 extends = env:d1_mini
@@ -48,15 +46,15 @@ build_flags = -D DEBUG
   - Common → GND
 
 ## GPIO Summary
-D0 (GPIO16) — switch DOWN / always off (input)
 D1 (GPIO5)  — relay control (output, active HIGH)
 D2 (GPIO4)  — switch UP / always on (input)
+D3 (GPIO0)  — switch DOWN / always off (input)
 D5 (GPIO14) — RGB red (output, PWM)
 D6 (GPIO12) — RGB green (output, PWM)
 D7 (GPIO13) — RGB blue (output, PWM)
 D8 (GPIO15) — pairing button (input, pull down required)
 
-⚠️ GPIO15 affect boot mode — be aware of their state at boot.
+⚠️ GPIO15, and GPIO0 affect boot mode — be aware of their state at boot.
 Pairing button on GPIO15 must have pull down resistor.
 
 ## Project Structure
@@ -89,9 +87,11 @@ Query parameter reference:
 - `uptime` — seconds since last boot via millis()/1000
 
 ## Device Modes
-NORMAL  — green LED, polling server, relay operational
-PAIRING — blue LED, AP mode, captive portal active
-DEBUG   — red LED, serial output active, compiled with -D DEBUG
+CONNECTED          — solid green LED, polling server, relay operational
+CONNECTING         — green blinking LED, attempting WiFi connection
+WIFI_OFFLINE       — red/blue blinking LED, WiFi connection lost
+SERVER_UNREACHABLE — red/green blinking LED, server not responding
+PAIRING            — solid blue LED, AP mode, captive portal active (Phase 4)
 
 ## Pairing Mode
 - Triggered automatically if no credentials in flash
@@ -124,7 +124,6 @@ DEBUG   — red LED, serial output active, compiled with -D DEBUG
 ## Debug Mode
 - Compiled with -D DEBUG flag in d1_mini_debug environment
 - Serial output active at 115200 baud
-- RGB LED red during debug mode
 - All serial output wrapped in DEBUG guards:
 ```cpp
 #ifdef DEBUG

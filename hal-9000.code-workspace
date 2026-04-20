@@ -1,0 +1,9 @@
+{
+    "folders": [
+        { "name": "firmware", "path": "firmware" },
+        { "name": "server", "path": "server" },
+        { "name": "ios", "path": "ios" },
+        { "name": "util", "path": "util" },
+        { "name": "root", "path": "." }
+    ]
+}

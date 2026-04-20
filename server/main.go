@@ -22,6 +22,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /poll", deviceHandler.HandlePoll)
 	mux.HandleFunc("POST /devices", deviceHandler.HandleRegisterDevice)
+	mux.HandleFunc("PATCH /devices/state", deviceHandler.HandleUpdateState)
 
 	addr := fmt.Sprintf(":%s", port)
 	log.Printf("HAL server listening on %s", addr)
