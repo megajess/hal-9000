@@ -16,7 +16,7 @@ and the Arduino framework.
 ### GPIO Pin Assignment
 | Pin | GPIO | Role | Direction |
 |-----|------|------|-----------|
-| D0 | GPIO16 | Switch DOWN (always off) | Input |
+| D3 | GPIO0  | Switch DOWN (always off) | Input |
 | D1 | GPIO5 | Relay control | Output |
 | D2 | GPIO4 | Switch UP (always on) | Input |
 | D5 | GPIO14 | RGB Red | Output (PWM) |
@@ -36,7 +36,7 @@ and the Arduino framework.
 ### Switch
 - Common → GND
 - UP terminal → D2
-- DOWN terminal → D0
+- DOWN terminal → D3
 
 ### Pairing Button
 - One terminal → D8
@@ -44,11 +44,13 @@ and the Arduino framework.
 - Pull down resistor required on D8
 
 ## Device Modes
-| Mode | LED Color | Description |
-|------|-----------|-------------|
-| Normal | Green | Connected, polling server |
-| Pairing | Blue | AP mode, awaiting configuration |
-| Debug | Red | Serial output active |
+| Mode | LED | Description |
+|------|-----|-------------|
+| Connected | Solid green | Connected, polling server |
+| Connecting | Green blinking | Attempting WiFi connection |
+| WiFi Offline | Red/blue blinking | WiFi connection lost |
+| Server Unreachable | Red/green blinking | Server not responding |
+| Pairing | Solid blue | AP mode, awaiting configuration (Phase 4) |
 
 ## Pairing
 1. Hold pairing button for 3 seconds during normal operation
@@ -77,7 +79,7 @@ pio device monitor
 ```
 
 ## Dependencies
-- WiFiManager by tzapu — captive portal and WiFi configuration
+None currently. WiFiManager (tzapu) will be added in Phase 4 for pairing mode.
 
 ## Memory Considerations
 The ESP8266 has 80KB usable RAM. To conserve memory:

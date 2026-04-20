@@ -114,6 +114,37 @@ func (h *DeviceHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *DeviceHandler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
+	apiKey := r.Header.Get("X-API-Key")
+
+	if apiKey == "" {
+		http.Error(w, "missing API key", http.StatusUnauthorized)
+		return
+	}
+
+	device, err := h.store.GetDeviceByAPIKey(apiKey)
+
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Convert query param (0/1) to state string ("off"/"on")
+	desiredState := "off"
+
+	if r.URL.Query().Get("state") == "1" {
+		desiredState = "on"
+	}
+
+	if err := h.store.UpdateDeviceDesiredState(device.ID, desiredState); err != nil {
+		http.Error(w, "error updating desired state", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func generateAPIKey() (string, error) {
 	b := make([]byte, 32)
 

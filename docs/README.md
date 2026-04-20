@@ -36,9 +36,11 @@ Relay → Load (120V)
 ### Device Modes
 | Mode | LED | Trigger |
 |------|-----|---------|
-| Normal | Green | Successful WiFi connection |
-| Pairing | Blue | Button held 3 seconds |
-| Debug | Red | Compiled with DEBUG flag |
+| Connected | Solid green | Successful WiFi connection |
+| Connecting | Green blinking | Attempting WiFi connection |
+| WiFi Offline | Red/blue blinking | WiFi connection lost |
+| Server Unreachable | Red/green blinking | Server not responding |
+| Pairing | Solid blue | Button held 3 seconds (Phase 4) |
 
 ### Communication Protocol
 GET /poll?state=1&boot=42&reason=0&uptime=3600

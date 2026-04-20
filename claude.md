@@ -22,7 +22,7 @@ project-hal/
   and physical switch input
 - **HiLink HLK-PM01** — AC-DC power supply, 120V in, 5V out, powers D1 Mini
 - **Isolated relay module** — switches 120V load, controlled by MCU GPIO
-- **RGB LED** — indicates device mode (green=normal, blue=pairing, red=debug)
+- **RGB LED** — indicates device mode (green=connected, blue=pairing, red/blue=WiFi offline, red/green=server unreachable)
 - **Momentary SPDT center off switch** — low voltage physical control input,
   wired directly to GPIO pins on D1 Mini
 
@@ -109,7 +109,7 @@ At the end of Phase 2 a basic working light switch exists.
 - HomeKit integration
 
 ### Current Phase
-Phase 2 - Firmware Core
+Phase 3 - Server Auth
 
 ## Developer Background
 The developer is a senior iOS engineer (12+ years) with strong Swift/

@@ -70,3 +70,20 @@ func (s *MemoryStore) UpdateDeviceState(deviceID string, reportedState string, t
 
 	return nil
 }
+
+func (s *MemoryStore) UpdateDeviceDesiredState(deviceID string, desiredState string) error {
+	s.mu.Lock()
+
+	defer s.mu.Unlock()
+
+	device, ok := s.devices[deviceID]
+
+	if !ok {
+		return ErrDeviceNotFound
+	}
+
+	device.DesiredState = desiredState
+	s.devices[deviceID] = device
+
+	return nil
+}

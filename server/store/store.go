@@ -13,4 +13,5 @@ type Store interface {
 	// concrete struct (e.g. `Now func() time.Time` on MemoryStore) so the
 	// interface signature stays clean.
 	UpdateDeviceState(deviceID string, reportedState string, timeOfUpdate ...time.Time) error
+	UpdateDeviceDesiredState(deviceID string, desiredState string) error
 }
