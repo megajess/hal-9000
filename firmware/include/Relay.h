@@ -18,6 +18,18 @@ class Relay {
     digitalWrite(PIN_RELAY, _state ? HIGH : LOW);
   }
 
+  void setOn() {
+    if (!_state) {
+      toggle();
+    }
+  }
+
+  void setOff() {
+    if (_state) {
+      toggle();
+    }
+  }
+
   bool isOn() const { return _state; }
 
  private:

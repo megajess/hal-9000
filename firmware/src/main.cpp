@@ -89,22 +89,29 @@ void handleSwitch() {
 
   if (position != lastPosition) {
     switchUsedOffline = deviceState != DeviceState::Connected;
+    lastPosition = position;
 
-    if (position == SwitchPosition::Up) {
-      if (!relay.isOn()) relay.toggle();
+    switch (position) {
+      case SwitchPosition::Up:
+        relay.setOn();
+        break;
+      case SwitchPosition::Down:
+        relay.setOff();
+        break;
+      case SwitchPosition::Center:
+        // clang-format off
+        /*=====================================================================\\
+        || On a transition to center position do not call                      || 
+        || `client.setDesiredState`, but make sure `lastPosition` is updated.  ||
+        \\=====================================================================*/
+        // clang-format on
 
-      if (deviceState == DeviceState::Connected) {
-        client.setDesiredState(true);
-      }
-    } else if (position == SwitchPosition::Down) {
-      if (relay.isOn()) relay.toggle();
-
-      if (deviceState == DeviceState::Connected) {
-        client.setDesiredState(false);
-      }
+        return;
     }
 
-    lastPosition = position;
+    if (deviceState == DeviceState::Connected) {
+      client.setDesiredState(position == SwitchPosition::Up);
+    }
   }
 }
 
@@ -181,9 +188,9 @@ bool handlePoll() {
         relay.toggle();
 
         debug_printToggleMessage();
-      // Fallthrough to reset consecutivePollFailures, and return notice of
-      // successful poll
-      [[fallthrough]]
+        // Fallthrough to reset consecutivePollFailures, and return notice of
+        // successful poll
+        [[fallthrough]];
       case PollResult::NoChange:
         consecutivePollFailures = 0;
 
