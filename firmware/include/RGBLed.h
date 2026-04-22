@@ -31,6 +31,11 @@ class RGBLed {
   }
 
   void indicateFor(DeviceState deviceState) {
+    if (deviceState != _lastState) {
+      _lastState = deviceState;
+      _patternBlinkPhase = PatternBlinkPhase::First;
+    }
+
     switch (deviceState) {
       case DeviceState::Connecting:
         indicateConnecting();
@@ -65,6 +70,7 @@ class RGBLed {
   unsigned long _patternBlinkInterval = 200;
 
   PatternBlinkPhase _patternBlinkPhase = PatternBlinkPhase::First;
+  DeviceState _lastState = DeviceState::Connecting;
 
   // -- Methods --
 
@@ -88,14 +94,10 @@ class RGBLed {
   void indicateOperational() { setGreen(); }
 
   void indicateWifiOffline() {
-    _patternBlinkPhase = PatternBlinkPhase::First;
-
     patternBlinkNonBlocking(LEDColor::Red, LEDColor::Blue);
   }
 
   void indicateServerUnreachable() {
-    _patternBlinkPhase = PatternBlinkPhase::First;
-
     patternBlinkNonBlocking(LEDColor::Red, LEDColor::Green);
   }
 
