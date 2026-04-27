@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"hal/handlers"
+	"hal/middleware"
 	"hal/store"
 	"log"
 	"net/http"
@@ -29,12 +30,15 @@ func main() {
 	deviceHandler := handlers.NewDeviceHandler(s)
 	authHandler := handlers.NewAuthHandler(s, jwtSecret)
 
+	authMiddleware := middleware.NewAuthMiddleware(jwtSecret)
+	apiKeyMiddleware := middleware.NewAPIKeyMiddleware(s)
+
 	mux := http.NewServeMux()
 
 	// Device handlers
-	mux.HandleFunc("GET /poll", deviceHandler.HandlePoll)
-	mux.HandleFunc("POST /devices", deviceHandler.HandleRegisterDevice)
-	mux.HandleFunc("PATCH /devices/state", deviceHandler.HandleUpdateState)
+	mux.Handle("GET /poll", apiKeyMiddleware.Require(http.HandlerFunc(deviceHandler.HandlePoll)))
+	mux.Handle("POST /devices", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleRegisterDevice)))
+	mux.Handle("PATCH /devices/state", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleUpdateState)))
 
 	// Auth handlers
 	mux.HandleFunc("POST /auth/register", authHandler.HandleRegistration)

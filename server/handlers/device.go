@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hal/middleware"
 	"hal/models"
 	"hal/store"
 	"net/http"
@@ -79,17 +80,11 @@ func (h *DeviceHandler) HandleRegisterDevice(w http.ResponseWriter, r *http.Requ
 // Called by the device every 1-2 seconds. Reads current state from query
 // params, updates the store, then responds with 0 (no change) or 1 (toggle).
 func (h *DeviceHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
-	apiKey := r.Header.Get("X-API-Key")
+	device, ok := middleware.DeviceFromContext(r.Context())
 
-	if apiKey == "" {
+	if !ok {
 		http.Error(w, "missing API key", http.StatusUnauthorized)
-		return
-	}
 
-	device, err := h.store.GetDeviceByAPIKey(apiKey)
-
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
