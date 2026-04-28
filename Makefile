@@ -1,6 +1,9 @@
 run-server:
 	@cd server && go run main.go
 
+run-tests:
+	@cd server && go test -v ./...
+
 register:
 	@cd util && bash testing.sh register
 

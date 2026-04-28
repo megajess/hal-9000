@@ -1,11 +1,8 @@
 package handlers
 
 import (
-	"bytes"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
+	"hal/middleware"
 	"hal/models"
 	"hal/store"
 	"net/http"
@@ -41,16 +38,21 @@ func (h *DeviceHandler) HandleRegisterDevice(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	deviceId, err := generateID()
+	deviceId := generateID()
 
-	if err != nil {
-		http.Error(w, "failed to generate device id", http.StatusInternalServerError)
+	userID, ok := middleware.UserIDFromContext(r.Context())
+
+	if userID == "" || !ok {
+		http.Error(w, "could not get userID from context", http.StatusUnauthorized)
 
 		return
 	}
 
+	// NOTE: Desired state is set to "on" during regristration to provide a physical
+	// verification that regisration has succeeded
 	device := models.Device{
 		ID:           deviceId,
+		UserID:       userID,
 		Name:         req.Name,
 		APIKey:       apiKey,
 		CurrentState: "off",
@@ -63,33 +65,26 @@ func (h *DeviceHandler) HandleRegisterDevice(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var buf bytes.Buffer
-
-	if err := json.NewEncoder(&buf).Encode(device); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
+	resp := struct {
+		models.Device
+		APIKey string `json:"api_key"`
+	}{
+		Device: device,
+		APIKey: device.APIKey,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(buf.Bytes())
+	writeJSONResponse(w, http.StatusCreated, resp)
 }
 
 // HandlePoll handles GET /poll
 // Called by the device every 1-2 seconds. Reads current state from query
 // params, updates the store, then responds with 0 (no change) or 1 (toggle).
 func (h *DeviceHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
-	apiKey := r.Header.Get("X-API-Key")
+	device, ok := middleware.DeviceFromContext(r.Context())
 
-	if apiKey == "" {
+	if !ok {
 		http.Error(w, "missing API key", http.StatusUnauthorized)
-		return
-	}
 
-	device, err := h.store.GetDeviceByAPIKey(apiKey)
-
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -114,57 +109,154 @@ func (h *DeviceHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *DeviceHandler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
-	apiKey := r.Header.Get("X-API-Key")
+func (h *DeviceHandler) HandleDeviceList(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
 
-	if apiKey == "" {
-		http.Error(w, "missing API key", http.StatusUnauthorized)
+	if userID == "" || !ok {
+		http.Error(w, "could not get userID from context", http.StatusUnauthorized)
+
 		return
 	}
 
-	device, err := h.store.GetDeviceByAPIKey(apiKey)
+	devices, err := h.store.GetDevicesByUserID(userID)
 
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Convert query param (0/1) to state string ("off"/"on")
-	desiredState := "off"
-
-	if r.URL.Query().Get("state") == "1" {
-		desiredState = "on"
-	}
-
-	if err := h.store.UpdateDeviceDesiredState(device.ID, desiredState); err != nil {
-		http.Error(w, "error updating desired state", http.StatusInternalServerError)
+		http.Error(w, "error getting devices", http.StatusInternalServerError)
 
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	writeJSONResponse(w, http.StatusOK, devices)
 }
 
-func generateAPIKey() (string, error) {
-	b := make([]byte, 32)
+func (h *DeviceHandler) HandleGetDevice(w http.ResponseWriter, r *http.Request) {
+	device, ok := h.getOwnedDevice(w, r)
 
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+	if !ok {
+		return
 	}
 
-	return hex.EncodeToString(b), nil
+	writeJSONResponse(w, http.StatusOK, device)
 }
 
-func generateID() (string, error) {
-	b := make([]byte, 16)
+func (h *DeviceHandler) HandleUpdateDeviceName(w http.ResponseWriter, r *http.Request) {
+	device, ok := h.getOwnedDevice(w, r)
 
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+	if !ok {
+		return
 	}
 
-	b[6] = (b[6] & 0x0f) | 0x40
-	b[8] = (b[8] & 0x3f) | 0x80
+	var req struct {
+		Name string `json:"name"`
+	}
 
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
-		b[0:4], b[4:6], b[6:8], b[8:10], b[10:]), nil
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "could not decode name from request", http.StatusBadRequest)
+
+		return
+	}
+
+	newDeviceName := req.Name
+
+	// TODO: Should there be more checks for a valid name?
+	if newDeviceName == "" {
+		http.Error(w, "must provide a valid name for device", http.StatusBadRequest)
+
+		return
+	}
+
+	device.Name = newDeviceName
+
+	err := h.store.UpdateDevice(device)
+
+	if err != nil {
+		http.Error(w, "error updating device", http.StatusInternalServerError)
+
+		return
+	}
+
+	writeJSONResponse(w, http.StatusOK, device)
+}
+
+func (h *DeviceHandler) HandleUpdateDeviceState(w http.ResponseWriter, r *http.Request) {
+	device, ok := h.getOwnedDevice(w, r)
+
+	if !ok {
+		return
+	}
+
+	var req struct {
+		DesiredState string `json:"desired_state"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "could not decode desired state from request", http.StatusBadRequest)
+
+		return
+	}
+
+	newDeviceDesiredState := req.DesiredState
+
+	if newDeviceDesiredState != "on" && newDeviceDesiredState != "off" {
+		http.Error(w, `only desired states of "on", or "off" are accepted`, http.StatusBadRequest)
+
+		return
+	}
+
+	device.DesiredState = newDeviceDesiredState
+
+	err := h.store.UpdateDevice(device)
+
+	if err != nil {
+		http.Error(w, "error updating device", http.StatusInternalServerError)
+
+		return
+	}
+
+	writeJSONResponse(w, http.StatusOK, device)
+}
+
+func (h *DeviceHandler) HandleDeleteDevice(w http.ResponseWriter, r *http.Request) {
+	device, ok := h.getOwnedDevice(w, r)
+
+	if !ok {
+		return
+	}
+
+	if err := h.store.DeleteDevice(device.ID); err != nil {
+		http.Error(w, "error deleting device", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// MARK: Private methods
+
+func (h *DeviceHandler) getOwnedDevice(w http.ResponseWriter, r *http.Request) (models.Device, bool) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+
+	if userID == "" || !ok {
+		http.Error(w, "could not get userID from context", http.StatusUnauthorized)
+
+		return models.Device{}, false
+	}
+
+	deviceID := r.PathValue("id")
+	device, err := h.store.GetDeviceByID(deviceID)
+
+	if err != nil {
+		http.Error(w, "device not found", http.StatusNotFound)
+
+		return models.Device{}, false
+	}
+
+	if device.UserID != userID {
+		http.Error(w, "device not found", http.StatusNotFound)
+
+		return models.Device{}, false
+	}
+
+	return device, true
 }
