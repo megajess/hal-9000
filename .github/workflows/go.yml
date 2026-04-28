@@ -28,4 +28,10 @@ jobs:
       run: go build -v ./...
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v -json ./... > test-results.json
+
+    - name: Test Report
+      uses: ctrf-io/go-ctrf-json-reporter@v1
+      with:
+        test-results: server/test-results.json
+      if: always()
