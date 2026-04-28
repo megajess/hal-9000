@@ -17,7 +17,6 @@ type MemoryStore struct {
 	users           map[string]models.User // [userID : User]
 	usersByUsername map[string]string      // [username : userID]
 
-	refreshTokens     map[string]string       // [userID : token]
 	userRefreshTokens map[string]refreshEntry // [token : refreshEntry]
 }
 
@@ -32,7 +31,6 @@ func NewMemoryStore() *MemoryStore {
 		devicesByKey:      make(map[string]string),
 		users:             make(map[string]models.User),
 		usersByUsername:   make(map[string]string),
-		refreshTokens:     make(map[string]string),
 		userRefreshTokens: make(map[string]refreshEntry),
 	}
 }
@@ -139,7 +137,6 @@ func (s *MemoryStore) StoreRefreshToken(token string, userID string) error {
 		expiresAt: time.Now().Add(7 * 24 * time.Hour),
 	}
 
-	s.refreshTokens[userID] = token
 	s.userRefreshTokens[token] = refreshEntry
 
 	return nil
@@ -164,14 +161,13 @@ func (s *MemoryStore) DeleteRefreshToken(token string) error {
 
 	defer s.mu.Unlock()
 
-	refreshEntry, ok := s.userRefreshTokens[token]
+	_, ok := s.userRefreshTokens[token]
 
 	if !ok {
 		return ErrRefreshTokenNotFound
 	}
 
 	delete(s.userRefreshTokens, token)
-	delete(s.refreshTokens, refreshEntry.userID)
 
 	return nil
 }
