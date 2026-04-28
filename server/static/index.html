@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAL Test Harness</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 { color: #ff4444; margin: 0 0 20px 0; }
+        h2 { color: #aaa; border-bottom: 1px solid #333; padding-bottom: 8px; margin-top: 0; }
+
+        /* Two column layout */
+        .layout {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+        }
+        .sidebar {
+            flex: 1;
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+        .routes {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .section { margin-bottom: 32px; }
+        .route { background: #2a2a2a; border: 1px solid #333; border-radius: 6px; padding: 16px; margin-bottom: 12px; }
+        .route-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .method { font-weight: bold; padding: 3px 8px; border-radius: 3px; font-size: 12px; }
+        .method-get    { background: #1a4a1a; color: #4caf50; }
+        .method-post   { background: #1a3a4a; color: #2196f3; }
+        .method-put    { background: #4a3a1a; color: #ff9800; }
+        .method-delete { background: #4a1a1a; color: #f44336; }
+        .path { color: #aaa; font-size: 14px; }
+        .field-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+
+        input[type="text"], textarea {
+            background: #1a1a1a; border: 1px solid #444; color: #e0e0e0;
+            padding: 8px; border-radius: 4px; font-family: monospace;
+            font-size: 13px; width: 100%; margin-bottom: 8px;
+        }
+        textarea { resize: vertical; }
+        button {
+            background: #333; color: #e0e0e0; border: 1px solid #555;
+            padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: monospace;
+        }
+        button:hover { background: #444; }
+
+        .tokens {
+            background: #1a2a1a; border: 1px solid #2a4a2a;
+            border-radius: 6px; padding: 16px; margin-bottom: 16px;
+        }
+        .response-panel {
+            background: #0a0a0a; border: 1px solid #333;
+            border-radius: 6px; padding: 16px;
+        }
+        .response-panel pre {
+            margin: 0; font-size: 12px; white-space: pre-wrap;
+            word-break: break-all; max-height: 400px; overflow-y: auto;
+        }
+        .status-ok  { color: #4caf50; }
+        .status-err { color: #f44336; }
+    </style>
+</head>
+<body>
+
+<h1>&#128308; HAL Test Harness</h1>
+
+<div class="layout">
+
+    <!-- Sticky sidebar: tokens + response -->
+    <div class="sidebar">
+        <div class="tokens">
+            <h2 style="color: #4caf50;">Tokens</h2>
+            <div class="field-label">Access Token</div>
+            <textarea id="access-token" rows="4" placeholder="Populated on login..."></textarea>
+            <div class="field-label">Refresh Token</div>
+            <textarea id="refresh-token" rows="2" placeholder="Populated on login..."></textarea>
+        </div>
+
+        <div class="response-panel">
+            <h2>Last Response</h2>
+            <pre id="response-display">No request made yet.</pre>
+        </div>
+    </div>
+
+    <!-- Scrollable routes -->
+    <div class="routes">
+
+        <!-- Auth -->
+        <div class="section">
+            <h2>Auth</h2>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-post">POST</span>
+                    <span class="path">/auth/register</span>
+                </div>
+                <div class="field-label">Username</div>
+                <input type="text" id="register-username" placeholder="username">
+                <div class="field-label">Password</div>
+                <input type="text" id="register-password" placeholder="password">
+                <button onclick="register()">Register</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-post">POST</span>
+                    <span class="path">/auth/login</span>
+                </div>
+                <div class="field-label">Username</div>
+                <input type="text" id="login-username" placeholder="username">
+                <div class="field-label">Password</div>
+                <input type="text" id="login-password" placeholder="password">
+                <button onclick="login()">Login</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-post">POST</span>
+                    <span class="path">/auth/refresh</span>
+                </div>
+                <p style="color:#888; font-size:13px; margin: 0 0 12px 0;">Uses the refresh token field in the sidebar.</p>
+                <button onclick="refreshTokens()">Refresh Tokens</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-post">POST</span>
+                    <span class="path">/auth/logout</span>
+                </div>
+                <p style="color:#888; font-size:13px; margin: 0 0 12px 0;">Uses the refresh token field in the sidebar. Clears both token fields on success.</p>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Devices -->
+        <div class="section">
+            <h2>Devices</h2>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-get">GET</span>
+                    <span class="path">/devices</span>
+                </div>
+                <button onclick="listDevices()">List Devices</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-post">POST</span>
+                    <span class="path">/devices</span>
+                </div>
+                <div class="field-label">Name</div>
+                <input type="text" id="create-device-name" placeholder="Living Room">
+                <button onclick="createDevice()">Create Device</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-get">GET</span>
+                    <span class="path">/devices/{id}</span>
+                </div>
+                <div class="field-label">Device ID</div>
+                <input type="text" id="get-device-id" placeholder="device-id">
+                <button onclick="getDevice()">Get Device</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-put">PUT</span>
+                    <span class="path">/devices/{id}/name</span>
+                </div>
+                <div class="field-label">Device ID</div>
+                <input type="text" id="update-name-id" placeholder="device-id">
+                <div class="field-label">New Name</div>
+                <input type="text" id="update-name-value" placeholder="Kitchen">
+                <button onclick="updateDeviceName()">Update Name</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-put">PUT</span>
+                    <span class="path">/devices/{id}/state</span>
+                </div>
+                <div class="field-label">Device ID</div>
+                <input type="text" id="update-state-id" placeholder="device-id">
+                <div class="field-label">Desired State</div>
+                <input type="text" id="update-state-value" placeholder="on / off">
+                <button onclick="updateDeviceState()">Update State</button>
+            </div>
+
+            <div class="route">
+                <div class="route-header">
+                    <span class="method method-delete">DELETE</span>
+                    <span class="path">/devices/{id}</span>
+                </div>
+                <div class="field-label">Device ID</div>
+                <input type="text" id="delete-device-id" placeholder="device-id">
+                <button onclick="deleteDevice()">Delete Device</button>
+            </div>
+        </div>
+
+    </div><!-- end .routes -->
+</div><!-- end .layout -->
+
+<script>
+    const BASE = 'http://localhost:8080';
+
+    function getAccessToken()  { return document.getElementById('access-token').value.trim(); }
+    function getRefreshToken() { return document.getElementById('refresh-token').value.trim(); }
+
+    function showResponse(status, body) {
+        const el = document.getElementById('response-display');
+        const cls = (status >= 200 && status < 300) ? 'status-ok' : 'status-err';
+        let formatted = body;
+        try { formatted = JSON.stringify(JSON.parse(body), null, 2); } catch {}
+        el.innerHTML = `<span class="${cls}">HTTP ${status}</span>\n\n` + escapeHtml(formatted);
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    async function request(method, path, body) {
+        const headers = { 'Content-Type': 'application/json' };
+        const token = getAccessToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const opts = { method, headers };
+        if (body) opts.body = JSON.stringify(body);
+
+        try {
+            const res = await fetch(BASE + path, opts);
+            const text = await res.text();
+            showResponse(res.status, text);
+            return { status: res.status, body: text };
+        } catch (e) {
+            showResponse(0, `Network error: ${e.message}`);
+            return null;
+        }
+    }
+
+    function storeTokens(responseBody) {
+        try {
+            const data = JSON.parse(responseBody);
+            if (data.access_token)  document.getElementById('access-token').value  = data.access_token;
+            if (data.refresh_token) document.getElementById('refresh-token').value = data.refresh_token;
+        } catch {}
+    }
+
+    async function register() {
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        await request('POST', '/auth/register', { username, password });
+    }
+
+    async function login() {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const result = await request('POST', '/auth/login', { username, password });
+        if (result && result.status === 200) storeTokens(result.body);
+    }
+
+    async function refreshTokens() {
+        const result = await request('POST', '/auth/refresh', { refresh_token: getRefreshToken() });
+        if (result && result.status === 200) storeTokens(result.body);
+    }
+
+    async function logout() {
+        const result = await request('POST', '/auth/logout', { refresh_token: getRefreshToken() });
+        if (result && result.status === 204) {
+            document.getElementById('access-token').value  = '';
+            document.getElementById('refresh-token').value = '';
+        }
+    }
+
+    async function listDevices()    { await request('GET', '/devices'); }
+
+    async function createDevice() {
+        const name = document.getElementById('create-device-name').value;
+        await request('POST', '/devices', { name });
+    }
+
+    async function getDevice() {
+        const id = document.getElementById('get-device-id').value;
+        await request('GET', `/devices/${id}`);
+    }
+
+    async function updateDeviceName() {
+        const id   = document.getElementById('update-name-id').value;
+        const name = document.getElementById('update-name-value').value;
+        await request('PUT', `/devices/${id}/name`, { name });
+    }
+
+    async function updateDeviceState() {
+        const id            = document.getElementById('update-state-id').value;
+        const desired_state = document.getElementById('update-state-value').value;
+        await request('PUT', `/devices/${id}/state`, { desired_state });
+    }
+
+    async function deleteDevice() {
+        const id = document.getElementById('delete-device-id').value;
+        await request('DELETE', `/devices/${id}`);
+    }
+</script>
+
+</body>
+</html>

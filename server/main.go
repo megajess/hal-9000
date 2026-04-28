@@ -35,15 +35,26 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// Device handlers
+	if os.Getenv("HAL_ENV") == "development" {
+		mux.Handle("GET /", http.FileServer(http.Dir("static")))
+		log.Println("Test harness available at http://localhost:" + port)
+	}
+
 	mux.Handle("GET /poll", apiKeyMiddleware.Require(http.HandlerFunc(deviceHandler.HandlePoll)))
+
+	// Device handlers
+	mux.Handle("GET /devices", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleDeviceList)))
 	mux.Handle("POST /devices", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleRegisterDevice)))
-	mux.Handle("PATCH /devices/state", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleUpdateState)))
+	mux.Handle("GET /devices/{id}", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleGetDevice)))
+	mux.Handle("PUT /devices/{id}/name", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleUpdateDeviceName)))
+	mux.Handle("PUT /devices/{id}/state", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleUpdateDeviceState)))
+	mux.Handle("DELETE /devices/{id}", authMiddleware.Require(http.HandlerFunc(deviceHandler.HandleDeleteDevice)))
 
 	// Auth handlers
 	mux.HandleFunc("POST /auth/register", authHandler.HandleRegistration)
 	mux.HandleFunc("POST /auth/login", authHandler.HandleLogin)
 	mux.HandleFunc("POST /auth/refresh", authHandler.HandleRefresh)
+	mux.HandleFunc("POST /auth/logout", authHandler.HandleLogout)
 
 	addr := fmt.Sprintf(":%s", port)
 

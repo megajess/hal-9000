@@ -145,7 +145,7 @@ type Store interface {
     GetDeviceByAPIKey(apiKey string) (Device, error)
     GetDevicesByUserID(userID string) ([]Device, error)
     UpdateDeviceState(deviceID string, current string) error
-    UpdateDeviceDesiredState(deviceID string, desired string) error
+    --UpdateDeviceDesiredState(deviceID string, desired string) error--
     DeleteDevice(deviceID string) error
 
     // Diagnostics

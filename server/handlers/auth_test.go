@@ -10,14 +10,6 @@ import (
 	"testing"
 )
 
-func createTestStore() *store.MemoryStore {
-	return store.NewMemoryStore()
-}
-
-func createAuthHandler(store *store.MemoryStore) *AuthHandler {
-	return NewAuthHandler(store, "shhh-its-a-secret")
-}
-
 func TestHandleRegistration(t *testing.T) {
 	store := createTestStore()
 	authHandler := createAuthHandler(store)
@@ -189,6 +181,76 @@ func TestLogin(t *testing.T) {
 
 	if resp.RefreshToken == "" {
 		t.Error("expected non-empty refresh token")
+	}
+}
+
+func TestLogout(t *testing.T) {
+	store := createTestStore()
+	authHandler := createAuthHandler(store)
+
+	// Register request
+
+	body := strings.NewReader(`{ "username" : "billiam", "password" : "P@ssword123" }`)
+	req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
+	w := httptest.NewRecorder()
+
+	req.Header.Set("Content-Type", "application/json")
+
+	authHandler.HandleRegistration(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("expected 201, got %d instead", w.Code)
+	}
+
+	// Login request
+
+	body = strings.NewReader(`{ "username" : "billiam", "password" : "P@ssword123" }`)
+	req = httptest.NewRequest(http.MethodPost, "/auth/login", body)
+	w = httptest.NewRecorder()
+
+	authHandler.HandleLogin(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d instead", w.Code)
+	}
+
+	var resp struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	json.NewDecoder(w.Body).Decode(&resp)
+
+	if resp.AccessToken == "" {
+		t.Error("expected non-empty access token")
+	}
+
+	if resp.RefreshToken == "" {
+		t.Error("expected non-empty refresh token")
+	}
+
+	// Logout request
+
+	body = strings.NewReader(fmt.Sprintf(`{ "refresh_token" : "%s" }`, resp.RefreshToken))
+	req = httptest.NewRequest(http.MethodPost, "/auth/logout", body)
+	w = httptest.NewRecorder()
+
+	authHandler.HandleLogout(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("expected 204, got %d instead", w.Code)
+	}
+
+	// Refresh request
+
+	body = strings.NewReader(fmt.Sprintf(`{ "refresh_token" : "%s" }`, resp.RefreshToken))
+	req = httptest.NewRequest(http.MethodPost, "/auth/refresh", body)
+	w = httptest.NewRecorder()
+
+	authHandler.HandleRefresh(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d instead", w.Code)
 	}
 }
 
@@ -447,4 +509,14 @@ func TestHandleRefresh_tokenRotation(t *testing.T) {
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d instead", w.Code)
 	}
+}
+
+// MARK: Private helper functions
+
+func createTestStore() *store.MemoryStore {
+	return store.NewMemoryStore()
+}
+
+func createAuthHandler(store *store.MemoryStore) *AuthHandler {
+	return NewAuthHandler(store, "shhh-its-a-secret")
 }

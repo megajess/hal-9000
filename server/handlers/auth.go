@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"encoding/json"
 	"hal/models"
 	"hal/store"
@@ -70,23 +69,13 @@ func (h *AuthHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var buf bytes.Buffer
-
 	resp := struct {
 		User models.User `json:"user"`
 	}{
 		User: user,
 	}
 
-	if err := json.NewEncoder(&buf).Encode(resp); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(buf.Bytes())
+	writeJSONResponse(w, http.StatusCreated, resp)
 }
 
 func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -144,17 +133,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: refreshToken,
 	}
 
-	var buf bytes.Buffer
-
-	if err := json.NewEncoder(&buf).Encode(resp); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(buf.Bytes())
+	writeJSONResponse(w, http.StatusOK, resp)
 }
 
 func (h *AuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
@@ -176,12 +155,6 @@ func (h *AuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.store.DeleteRefreshToken(req.RefreshToken); err != nil {
-		http.Error(w, "internal error", http.StatusInternalServerError)
-
-		return
-	}
-
 	accessTokenString, err := h.generateAccessTokenFor(userID)
 
 	if err != nil {
@@ -198,7 +171,11 @@ func (h *AuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var buf bytes.Buffer
+	if err := h.store.DeleteRefreshToken(req.RefreshToken); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+
+		return
+	}
 
 	resp := struct {
 		AccessToken  string `json:"access_token"`
@@ -208,16 +185,22 @@ func (h *AuthHandler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: refreshTokenString,
 	}
 
-	if err := json.NewEncoder(&buf).Encode(resp); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+	writeJSONResponse(w, http.StatusOK, resp)
+}
 
-		return
+func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RefreshToken string `json:"refresh_token"`
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(buf.Bytes())
+	if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+		h.store.DeleteRefreshToken(req.RefreshToken)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
+
+// MARK: Private methods
 
 func (h *AuthHandler) generateAccessTokenFor(userID string) (string, error) {
 	claims := models.Claims{

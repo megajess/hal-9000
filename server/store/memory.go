@@ -6,14 +6,16 @@ import (
 	"time"
 )
 
+var _ Store = (*MemoryStore)(nil)
+
 type MemoryStore struct {
 	mu sync.RWMutex
 
-	devices map[string]models.Device // [devideID : Device]
-	byKey   map[string]string        // [apiKey : deviceID]
+	devices      map[string]models.Device // [devideID : Device]
+	devicesByKey map[string]string        // [apiKey : deviceID]
 
-	users      map[string]models.User // [userID : User]
-	byUsername map[string]string      // [username : userID]
+	users           map[string]models.User // [userID : User]
+	usersByUsername map[string]string      // [username : userID]
 
 	refreshTokens     map[string]string       // [userID : token]
 	userRefreshTokens map[string]refreshEntry // [token : refreshEntry]
@@ -27,9 +29,9 @@ type refreshEntry struct {
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		devices:           make(map[string]models.Device),
-		byKey:             make(map[string]string),
+		devicesByKey:      make(map[string]string),
 		users:             make(map[string]models.User),
-		byUsername:        make(map[string]string),
+		usersByUsername:   make(map[string]string),
 		refreshTokens:     make(map[string]string),
 		userRefreshTokens: make(map[string]refreshEntry),
 	}
@@ -41,7 +43,7 @@ func (s *MemoryStore) CreateDevice(device models.Device) error {
 	defer s.mu.Unlock()
 
 	s.devices[device.ID] = device
-	s.byKey[device.APIKey] = device.ID
+	s.devicesByKey[device.APIKey] = device.ID
 
 	return nil
 }
@@ -51,7 +53,7 @@ func (s *MemoryStore) GetDeviceByAPIKey(apiKey string) (models.Device, error) {
 
 	defer s.mu.RUnlock()
 
-	id, ok := s.byKey[apiKey]
+	id, ok := s.devicesByKey[apiKey]
 
 	if !ok {
 		return models.Device{}, ErrDeviceNotFound
@@ -84,34 +86,17 @@ func (s *MemoryStore) UpdateDeviceState(deviceID string, reportedState string, t
 	return nil
 }
 
-func (s *MemoryStore) UpdateDeviceDesiredState(deviceID string, desiredState string) error {
-	s.mu.Lock()
-
-	defer s.mu.Unlock()
-
-	device, ok := s.devices[deviceID]
-
-	if !ok {
-		return ErrDeviceNotFound
-	}
-
-	device.DesiredState = desiredState
-	s.devices[deviceID] = device
-
-	return nil
-}
-
 func (s *MemoryStore) CreateUser(user models.User) error {
 	s.mu.Lock()
 
 	defer s.mu.Unlock()
 
-	if _, ok := s.byUsername[user.Username]; ok {
+	if _, ok := s.usersByUsername[user.Username]; ok {
 		return ErrUsernameTaken
 	}
 
 	s.users[user.ID] = user
-	s.byUsername[user.Username] = user.ID
+	s.usersByUsername[user.Username] = user.ID
 
 	return nil
 }
@@ -121,7 +106,7 @@ func (s *MemoryStore) GetUserByUsername(username string) (models.User, error) {
 
 	defer s.mu.RUnlock()
 
-	id, ok := s.byUsername[username]
+	id, ok := s.usersByUsername[username]
 
 	if !ok {
 		return models.User{}, ErrUserNotFound
@@ -148,10 +133,6 @@ func (s *MemoryStore) StoreRefreshToken(token string, userID string) error {
 	s.mu.Lock()
 
 	defer s.mu.Unlock()
-
-	if oldToken, ok := s.refreshTokens[userID]; ok {
-		delete(s.userRefreshTokens, oldToken)
-	}
 
 	refreshEntry := refreshEntry{
 		userID:    userID,
@@ -183,10 +164,77 @@ func (s *MemoryStore) DeleteRefreshToken(token string) error {
 
 	defer s.mu.Unlock()
 
-	refreshEntry := s.userRefreshTokens[token]
+	refreshEntry, ok := s.userRefreshTokens[token]
+
+	if !ok {
+		return ErrRefreshTokenNotFound
+	}
 
 	delete(s.userRefreshTokens, token)
 	delete(s.refreshTokens, refreshEntry.userID)
+
+	return nil
+}
+
+func (s *MemoryStore) GetDeviceByID(deviceID string) (models.Device, error) {
+	s.mu.RLock()
+
+	defer s.mu.RUnlock()
+
+	device, ok := s.devices[deviceID]
+
+	if !ok {
+		return models.Device{}, ErrDeviceNotFound
+	}
+
+	return device, nil
+}
+
+func (s *MemoryStore) GetDevicesByUserID(userID string) ([]models.Device, error) {
+	s.mu.RLock()
+
+	defer s.mu.RUnlock()
+
+	devices := []models.Device{}
+
+	for _, device := range s.devices {
+		if device.UserID == userID {
+			devices = append(devices, device)
+		}
+	}
+
+	return devices, nil
+}
+
+func (s *MemoryStore) UpdateDevice(device models.Device) error {
+	s.mu.Lock()
+
+	defer s.mu.Unlock()
+
+	_, ok := s.devices[device.ID]
+
+	if !ok {
+		return ErrDeviceNotFound
+	}
+
+	s.devices[device.ID] = device
+
+	return nil
+}
+
+func (s *MemoryStore) DeleteDevice(deviceID string) error {
+	s.mu.Lock()
+
+	defer s.mu.Unlock()
+
+	device, ok := s.devices[deviceID]
+
+	if !ok {
+		return ErrDeviceNotFound
+	}
+
+	delete(s.devices, deviceID)
+	delete(s.devicesByKey, device.APIKey)
 
 	return nil
 }
