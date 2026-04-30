@@ -8,3 +8,9 @@ require (
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.50.0
 )
+
+require (
+	github.com/golang-migrate/migrate/v4 v4.19.1 // indirect
+	github.com/jmoiron/sqlx v1.4.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.44 // indirect
+)

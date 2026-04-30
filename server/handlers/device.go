@@ -52,7 +52,6 @@ func (h *DeviceHandler) HandleRegisterDevice(w http.ResponseWriter, r *http.Requ
 	// verification that regisration has succeeded
 	device := models.Device{
 		ID:           deviceId,
-		UserID:       userID,
 		Name:         req.Name,
 		APIKey:       apiKey,
 		CurrentState: "off",
@@ -60,7 +59,7 @@ func (h *DeviceHandler) HandleRegisterDevice(w http.ResponseWriter, r *http.Requ
 		CreatedAt:    time.Now(),
 	}
 
-	if err := h.store.CreateDevice(device); err != nil {
+	if err := h.store.CreateDevice(device, userID); err != nil {
 		http.Error(w, "failed to create device", http.StatusInternalServerError)
 		return
 	}
@@ -95,7 +94,7 @@ func (h *DeviceHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
 		reportedState = "on"
 	}
 
-	if err := h.store.UpdateDeviceState(device.ID, reportedState, time.Now()); err != nil {
+	if err := h.store.UpdateDeviceState(device.ID, reportedState); err != nil {
 		http.Error(w, "failed to update state", http.StatusInternalServerError)
 		return
 	}
@@ -252,11 +251,21 @@ func (h *DeviceHandler) getOwnedDevice(w http.ResponseWriter, r *http.Request) (
 		return models.Device{}, false
 	}
 
-	if device.UserID != userID {
+	users, err := h.store.GetUsersByDeviceID(deviceID)
+
+	if err != nil {
 		http.Error(w, "device not found", http.StatusNotFound)
 
 		return models.Device{}, false
 	}
 
-	return device, true
+	for _, du := range users {
+		if du.UserID == userID {
+			return device, true
+		}
+	}
+
+	http.Error(w, "device not found", http.StatusNotFound)
+
+	return models.Device{}, false
 }

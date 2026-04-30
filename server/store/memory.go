@@ -18,6 +18,10 @@ type MemoryStore struct {
 	usersByUsername map[string]string      // [username : userID]
 
 	userRefreshTokens map[string]refreshEntry // [token : refreshEntry]
+
+	deviceUsers map[string][]models.DeviceUser // [deviceID : []DeviceUser]
+
+	Now func() time.Time
 }
 
 type refreshEntry struct {
@@ -32,16 +36,32 @@ func NewMemoryStore() *MemoryStore {
 		users:             make(map[string]models.User),
 		usersByUsername:   make(map[string]string),
 		userRefreshTokens: make(map[string]refreshEntry),
+		deviceUsers:       make(map[string][]models.DeviceUser),
+		Now:               time.Now,
 	}
 }
 
-func (s *MemoryStore) CreateDevice(device models.Device) error {
+func (s *MemoryStore) CreateDevice(device models.Device, ownerUserID string) error {
 	s.mu.Lock()
 
 	defer s.mu.Unlock()
 
+	user, ok := s.users[ownerUserID]
+
+	if !ok {
+		return ErrUserNotFound
+	}
+
 	s.devices[device.ID] = device
 	s.devicesByKey[device.APIKey] = device.ID
+	s.deviceUsers[device.ID] = []models.DeviceUser{
+		{
+			DeviceID: device.ID,
+			UserID:   ownerUserID,
+			Username: s.users[user.Username].Username,
+			Role:     "owner",
+		},
+	}
 
 	return nil
 }
@@ -60,16 +80,12 @@ func (s *MemoryStore) GetDeviceByAPIKey(apiKey string) (models.Device, error) {
 	return s.devices[id], nil
 }
 
-func (s *MemoryStore) UpdateDeviceState(deviceID string, reportedState string, timeOfUpdate ...time.Time) error {
+func (s *MemoryStore) UpdateDeviceState(deviceID string, reportedState string) error {
 	s.mu.Lock()
 
 	defer s.mu.Unlock()
 
-	lastSeen := time.Now()
-
-	if len(timeOfUpdate) > 0 {
-		lastSeen = timeOfUpdate[0]
-	}
+	lastSeen := s.Now()
 
 	device, ok := s.devices[deviceID]
 
@@ -148,9 +164,12 @@ func (s *MemoryStore) GetUserIDByRefreshToken(token string) (string, error) {
 	defer s.mu.RUnlock()
 
 	refreshEntry, ok := s.userRefreshTokens[token]
-
-	if !ok || time.Now().After(refreshEntry.expiresAt) {
+	if !ok {
 		return "", ErrRefreshTokenNotFound
+	}
+
+	if s.Now().After(refreshEntry.expiresAt) {
+		return "", ErrRefreshTokenExpired
 	}
 
 	return refreshEntry.userID, nil
@@ -193,9 +212,14 @@ func (s *MemoryStore) GetDevicesByUserID(userID string) ([]models.Device, error)
 
 	devices := []models.Device{}
 
-	for _, device := range s.devices {
-		if device.UserID == userID {
-			devices = append(devices, device)
+	for deviceID, users := range s.deviceUsers {
+		for _, du := range users {
+			if du.UserID == userID {
+				if device, ok := s.devices[deviceID]; ok {
+					devices = append(devices, device)
+				}
+				break
+			}
 		}
 	}
 
@@ -231,6 +255,71 @@ func (s *MemoryStore) DeleteDevice(deviceID string) error {
 
 	delete(s.devices, deviceID)
 	delete(s.devicesByKey, device.APIKey)
+	delete(s.deviceUsers, deviceID)
 
 	return nil
+}
+
+func (s *MemoryStore) AddUserToDevice(deviceID, userID, role string) error {
+	s.mu.Lock()
+
+	defer s.mu.Unlock()
+
+	if _, ok := s.devices[deviceID]; !ok {
+		return ErrDeviceNotFound
+	}
+
+	user, ok := s.users[userID]
+
+	if !ok {
+		return ErrUserNotFound
+	}
+
+	for _, du := range s.deviceUsers[deviceID] {
+		if du.UserID == userID {
+			return nil
+		}
+	}
+
+	s.deviceUsers[deviceID] = append(s.deviceUsers[deviceID], models.DeviceUser{
+		DeviceID: deviceID,
+		UserID:   userID,
+		Username: user.Username,
+		Role:     role,
+	})
+
+	return nil
+}
+
+func (s *MemoryStore) GetUsersByDeviceID(deviceID string) ([]models.DeviceUser, error) {
+	s.mu.RLock()
+
+	defer s.mu.RUnlock()
+
+	if _, ok := s.devices[deviceID]; !ok {
+		return nil, ErrDeviceNotFound
+	}
+
+	return append([]models.DeviceUser(nil), s.deviceUsers[deviceID]...), nil
+}
+
+func (s *MemoryStore) RemoveUserFromDevice(deviceID, userID string) error {
+	s.mu.Lock()
+
+	defer s.mu.Unlock()
+
+	users, ok := s.deviceUsers[deviceID]
+
+	if !ok {
+		return ErrDeviceNotFound
+	}
+
+	for i, du := range users {
+		if du.UserID == userID {
+			s.deviceUsers[deviceID] = append(users[:i], users[i+1:]...)
+			return nil
+		}
+	}
+
+	return ErrUserNotFound
 }

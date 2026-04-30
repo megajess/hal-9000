@@ -25,7 +25,21 @@ func main() {
 		log.Fatal("HAL_JWT_SECRET environment variable is required")
 	}
 
-	s := store.NewMemoryStore()
+	var s store.Store
+	if dbPath := os.Getenv("HAL_DB_PATH"); dbPath != "" {
+		if err := store.RunMigrations(dbPath); err != nil {
+			log.Fatalf("failed to run migrations: %v", err)
+		}
+		sqliteStore, err := store.NewSQLiteStore(dbPath)
+		if err != nil {
+			log.Fatalf("failed to open database: %v", err)
+		}
+		s = sqliteStore
+		log.Println("Using SQLite store:", dbPath)
+	} else {
+		s = store.NewMemoryStore()
+		log.Println("Using in-memory store")
+	}
 
 	deviceHandler := handlers.NewDeviceHandler(s)
 	authHandler := handlers.NewAuthHandler(s, jwtSecret)
