@@ -15,11 +15,13 @@ import (
 )
 
 func TestHandleRegisterDevice(t *testing.T) {
+	testUser := "2-444-66666"
 	store := createTestStore()
 	deviceHandler := createDeviceHandler(store)
+	createTestUser(store, testUser)
 
 	body := strings.NewReader(`{ "name" : "Test Device" }`)
-	req := requestWithUser(http.MethodPost, "/devices", body, "2-444-66666")
+	req := requestWithUser(http.MethodPost, "/devices", body, testUser)
 	w := httptest.NewRecorder()
 
 	req.Header.Set("Content-Type", "application/json")
@@ -534,16 +536,26 @@ func requestWithUser(method, path string, body io.Reader, userID string) *http.R
 	return req.WithContext(ctx)
 }
 
+func createTestUser(s *store.MemoryStore, userID string) {
+	s.CreateUser(models.User{
+		ID:       userID,
+		Username: "testuser",
+	})
+}
+
 func createTestDevice(s *store.MemoryStore, userID string) models.Device {
+	createTestUser(s, userID)
+
 	device := models.Device{
 		ID:           "test-device-id",
-		UserID:       userID,
 		Name:         "Test Device",
 		APIKey:       "test-api-key",
 		CurrentState: "off",
 		DesiredState: "on",
 		CreatedAt:    time.Now(),
 	}
-	s.CreateDevice(device)
+
+	s.CreateDevice(device, userID)
+
 	return device
 }

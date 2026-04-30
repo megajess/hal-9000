@@ -25,23 +25,12 @@ func createTestStore() *store.MemoryStore {
 }
 
 func createTestDevice() models.Device {
-	return createDevice(deviceID, deviceName, nil, apiKey, "off", "on")
+	return createDevice(deviceID, deviceName, apiKey, "off", "on")
 }
 
-func createTestDeviceForUser(user models.User) models.Device {
-	return createDevice(deviceID, deviceName, &user.ID, apiKey, "off", "on")
-}
-
-func createDevice(id string, name string, userID *string, apiKey string, currentState string, desiredState string) models.Device {
-	var _userID string
-
-	if userID != nil {
-		_userID = *userID
-	}
-
+func createDevice(id, name, apiKey, currentState, desiredState string) models.Device {
 	return models.Device{
 		ID:           id,
-		UserID:       _userID,
 		Name:         name,
 		APIKey:       apiKey,
 		CurrentState: currentState,
@@ -69,30 +58,31 @@ func createUser(id string, username string, passwordHash string) models.User {
 
 func TestCreateDevice(t *testing.T) {
 	store := createTestStore()
-	deviceModel := createTestDevice()
+	device := createTestDevice()
+	store.CreateUser(createTestUser())
 
-	err := store.CreateDevice(deviceModel)
+	err := store.CreateDevice(device, userID)
 
 	if err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)
 	}
 
-	device, err := store.GetDeviceByAPIKey(apiKey)
+	fetchedDevice, err := store.GetDeviceByAPIKey(apiKey)
 
 	if err != nil {
 		t.Fatalf("Could not find device with API key %q", apiKey)
 	}
 
-	if device.Name != deviceName {
-		t.Errorf("Expected name %q, got %q instead", deviceName, device.Name)
+	if fetchedDevice.Name != deviceName {
+		t.Errorf("Expected name %q, got %q instead", deviceName, fetchedDevice.Name)
 	}
 
-	if device.ID != deviceID {
-		t.Errorf("Expected ID %q, got %q instead", deviceID, device.ID)
+	if fetchedDevice.ID != deviceID {
+		t.Errorf("Expected ID %q, got %q instead", deviceID, fetchedDevice.ID)
 	}
 
-	if device.APIKey != apiKey {
-		t.Errorf("Expected API key %q, got %q instead", apiKey, device.APIKey)
+	if fetchedDevice.APIKey != apiKey {
+		t.Errorf("Expected API key %q, got %q instead", apiKey, fetchedDevice.APIKey)
 	}
 }
 
@@ -109,8 +99,9 @@ func TestGetDeviceByAPIKey_NotFound(t *testing.T) {
 func TestUpdateDeviceState(t *testing.T) {
 	store := createTestStore()
 	device := createTestDevice()
+	store.CreateUser(createTestUser())
 
-	if err := store.CreateDevice(device); err != nil {
+	if err := store.CreateDevice(device, userID); err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)
 	}
 
@@ -136,8 +127,9 @@ func TestUpdateDeviceState(t *testing.T) {
 func TestUpdateDeviceState_NotFound(t *testing.T) {
 	store := createTestStore()
 	device := createTestDevice()
+	store.CreateUser(createTestUser())
 
-	if err := store.CreateDevice(device); err != nil {
+	if err := store.CreateDevice(device, userID); err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)
 	}
 
@@ -261,7 +253,9 @@ func TestGetDeviceByID(t *testing.T) {
 	store := createTestStore()
 	device := createTestDevice()
 
-	err := store.CreateDevice(device)
+	store.CreateUser(createTestUser())
+
+	err := store.CreateDevice(device, userID)
 
 	if err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)
@@ -281,9 +275,10 @@ func TestGetDeviceByID(t *testing.T) {
 func TestGetDevicesbyUserID(t *testing.T) {
 	store := createTestStore()
 	user := createTestUser()
-	device := createTestDeviceForUser(user)
+	device := createTestDevice()
+	store.CreateUser(createTestUser())
 
-	err := store.CreateDevice(device)
+	err := store.CreateDevice(device, user.ID)
 
 	if err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)
@@ -308,8 +303,9 @@ func TestUpdateDevice(t *testing.T) {
 	updatedName := "UPDATED"
 	store := createTestStore()
 	device := createTestDevice()
+	store.CreateUser(createTestUser())
 
-	err := store.CreateDevice(device)
+	err := store.CreateDevice(device, userID)
 
 	if err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)
@@ -341,8 +337,9 @@ func TestUpdateDevice(t *testing.T) {
 func TestDeleteDevice(t *testing.T) {
 	store := createTestStore()
 	device := createTestDevice()
+	store.CreateUser(createTestUser())
 
-	err := store.CreateDevice(device)
+	err := store.CreateDevice(device, userID)
 
 	if err != nil {
 		t.Fatalf("CreateDevice returned unexpected error: %v", err)

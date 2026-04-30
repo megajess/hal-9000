@@ -17,7 +17,7 @@ func TestRefreshTokenExpiration(t *testing.T) {
 		expiresAt: time.Now().Add(-1 * time.Hour),
 	}
 
-	if _, err := store.GetUserIDByRefreshToken(token); err != ErrRefreshTokenNotFound {
+	if _, err := store.GetUserIDByRefreshToken(token); err != ErrRefreshTokenExpired {
 		t.Fatalf("get userID by refresh token returned an unexpected errpr: %v", err)
 	}
 }
